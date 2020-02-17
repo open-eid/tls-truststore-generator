@@ -17,9 +17,9 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.net.URLConnection;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -71,21 +71,21 @@ public final class LotlParser {
         }
     }
 
-    // TODO: Follow redirects
     private InputStream openLotlStream(final URL lotlUrl) {
         try {
-            final URLConnection urlConnection = lotlUrl.openConnection();
-            if (urlConnection instanceof HttpsURLConnection) {
-                ((HttpsURLConnection) urlConnection).setSSLSocketFactory(
+            final HttpURLConnection httpUrlConnection = (HttpURLConnection) lotlUrl.openConnection();
+            if (httpUrlConnection instanceof HttpsURLConnection) {
+                ((HttpsURLConnection) httpUrlConnection).setSSLSocketFactory(
                         TlsUtils.createSocketFactory(Optional.of(protocol), new NoOpTrustManager())
                 );
             }
 
-            urlConnection.setDoOutput(false);
-            urlConnection.setDoInput(true);
-            urlConnection.connect();
+            httpUrlConnection.setInstanceFollowRedirects(false);
+            httpUrlConnection.setDoOutput(false);
+            httpUrlConnection.setDoInput(true);
+            httpUrlConnection.connect();
 
-            return urlConnection.getInputStream();
+            return httpUrlConnection.getInputStream();
         } catch (IOException e) {
             final String message = String.format("Failed to open connection to %s: %s", lotlUrl, e.getMessage());
             throw new TlsGeneratorTechnicalException(message, e);

@@ -18,7 +18,6 @@ import java.net.URL;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Paths;
 import java.security.cert.X509Certificate;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -38,7 +37,8 @@ public final class TlsTrustStoreGenerator {
 
             final Set<X509Certificate> certificates = fetchCertificates(Stream.of(
                     new HttpUrlsInputSource(options.getOrDefault(CommandLineArgument.URL, Collections.emptyList())),
-                    new LotlUrlsInputSource(options.getOrDefault(CommandLineArgument.LOTL, Collections.emptyList()), getTlsProtocol(options))
+                    new LotlUrlsInputSource(options.getOrDefault(CommandLineArgument.LOTL, Collections.emptyList()),
+                            getTlsProtocol(options), options.containsKey(CommandLineArgument.FOLLOW_REDIRECTS))
             ).flatMap(UrlsInputSource::stream).distinct(), options);
 
             System.out.println();
