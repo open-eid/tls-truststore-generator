@@ -2,6 +2,7 @@ package org.digidoc4j.utils.tlsgenerator.extract;
 
 import org.digidoc4j.utils.tlsgenerator.exception.TlsGeneratorTechnicalException;
 import org.digidoc4j.utils.tlsgenerator.tls.NoOpTrustManager;
+import org.digidoc4j.utils.tlsgenerator.tls.TlsProtocol;
 import org.digidoc4j.utils.tlsgenerator.tls.TlsUtils;
 import org.digidoc4j.utils.tlsgenerator.url.UrlUtils;
 
@@ -17,6 +18,7 @@ import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 public final class RedirectedUrlChainExtractor {
@@ -24,10 +26,10 @@ public final class RedirectedUrlChainExtractor {
     private static final String REQUEST_METHOD = "GET";
     private static final String REDIRECT_TARGET_HEADER = "Location";
 
-    private final String protocol;
+    private final TlsProtocol protocol;
 
-    public RedirectedUrlChainExtractor(final Optional<String> tlsProtocol) {
-        protocol = TlsUtils.getValidTlsProtocol(tlsProtocol);
+    public RedirectedUrlChainExtractor(final TlsProtocol tlsProtocol) {
+        protocol = Objects.requireNonNull(tlsProtocol);
     }
 
     public List<URL> extractRedirectionUrlChain(final URL url) {
@@ -106,9 +108,7 @@ public final class RedirectedUrlChainExtractor {
     }
 
     private void configureForTls(final HttpsURLConnection httpsURLConnection) {
-        httpsURLConnection.setSSLSocketFactory(TlsUtils.createSocketFactory(
-                Optional.of(protocol), new NoOpTrustManager()
-        ));
+        httpsURLConnection.setSSLSocketFactory(TlsUtils.createSocketFactory(protocol, new NoOpTrustManager()));
     }
 
     private static boolean isProtocolSupported(final String protocol) {

@@ -135,11 +135,11 @@ If not specified, will not follow any redirects.
 
 Specific TLS protocol for secure connections can be specified using the `--tls-protocol` argument followed by the TLS protocol identifier:
 ```
-java -jar tls-truststore-generator-1.0.0.jar --tls-protocol TLSv1.2
+java -jar tls-truststore-generator-1.0.0.jar --tls-protocol TLSv1.3
 ```
 
 **--tls-protocol** is an optional argument, requiring exactly one parameter: [TLS protocol](https://docs.oracle.com/javase/8/docs/technotes/guides/security/StandardNames.html#SSLContext).
-If not present, defaults to **TLSv1.2**. Currently accepts any of `TLS`, `TLSv1`, `TLSv1.1` and `TLSv1.2`.
+If not present, defaults to **TLSv1.3**. Currently accepts any of `TLS`, `TLSv1`, `TLSv1.1`, `TLSv1.2` and `TLSv1.3`.
 
 ### Misc
 

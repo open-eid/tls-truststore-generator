@@ -8,6 +8,7 @@ import org.digidoc4j.utils.tlsgenerator.extract.CertificateChainExtractor;
 import org.digidoc4j.utils.tlsgenerator.extract.RedirectedUrlChainExtractor;
 import org.digidoc4j.utils.tlsgenerator.lotl.LotlUrlsInputSource;
 import org.digidoc4j.utils.tlsgenerator.tls.CertificateChainFetcher;
+import org.digidoc4j.utils.tlsgenerator.tls.TlsProtocol;
 import org.digidoc4j.utils.tlsgenerator.tls.TlsUtils;
 import org.digidoc4j.utils.tlsgenerator.url.HttpUrlsInputSource;
 import org.digidoc4j.utils.tlsgenerator.url.UrlUtils;
@@ -21,7 +22,6 @@ import java.security.cert.X509Certificate;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
@@ -107,7 +107,7 @@ public final class TlsTrustStoreGenerator {
             CertificateChainExtractor.createCertificateChainExtractor(options.get(CommandLineArgument.EXTRACT_FROM_CHAIN));
         }
         if (options.containsKey(CommandLineArgument.TLS_PROTOCOL)) {
-            TlsUtils.validateTlsProtocolSupport(options.get(CommandLineArgument.TLS_PROTOCOL).get(0));
+            TlsUtils.getValidTlsProtocol(options.get(CommandLineArgument.TLS_PROTOCOL).get(0));
         }
         try {
             Paths.get(options.get(CommandLineArgument.OUT).get(0));
@@ -116,11 +116,11 @@ public final class TlsTrustStoreGenerator {
         }
     }
 
-    private static Optional<String> getTlsProtocol(final Map<CommandLineArgument, List<String>> options) {
+    private static TlsProtocol getTlsProtocol(final Map<CommandLineArgument, List<String>> options) {
         if (options.containsKey(CommandLineArgument.TLS_PROTOCOL)) {
-            return Optional.of(options.get(CommandLineArgument.TLS_PROTOCOL).get(0));
+            return TlsUtils.getValidTlsProtocol(options.get(CommandLineArgument.TLS_PROTOCOL).get(0));
         } else {
-            return Optional.empty();
+            return TlsUtils.getValidTlsProtocol(null);
         }
     }
 

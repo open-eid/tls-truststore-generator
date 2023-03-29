@@ -8,21 +8,21 @@ import java.io.IOException;
 import java.net.URL;
 import java.security.cert.X509Certificate;
 import java.util.List;
-import java.util.Optional;
+import java.util.Objects;
 
 public final class CertificateChainFetcher {
 
-    private final String protocol;
+    private final TlsProtocol protocol;
 
-    public CertificateChainFetcher(final Optional<String> tlsProtocol) {
-        protocol = TlsUtils.getValidTlsProtocol(tlsProtocol);
+    public CertificateChainFetcher(final TlsProtocol tlsProtocol) {
+        protocol = Objects.requireNonNull(tlsProtocol);
     }
 
     public List<X509Certificate> fetchCertificateChainFrom(final URL url) {
         final AccumulatingTrustManager trustManager = new AccumulatingTrustManager();
 
         try {
-            final SSLSocketFactory sslSocketFactory = TlsUtils.createSocketFactory(Optional.of(protocol), trustManager);
+            final SSLSocketFactory sslSocketFactory = TlsUtils.createSocketFactory(protocol, trustManager);
             final int port = (url.getPort() > 0) ? url.getPort() : 443;
 
             try (SSLSocket sslSocket = (SSLSocket) sslSocketFactory.createSocket(url.getHost(), port)) {

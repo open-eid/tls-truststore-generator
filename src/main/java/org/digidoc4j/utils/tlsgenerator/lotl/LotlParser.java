@@ -4,6 +4,7 @@ import org.digidoc4j.utils.tlsgenerator.Resources;
 import org.digidoc4j.utils.tlsgenerator.exception.TlsGeneratorParseException;
 import org.digidoc4j.utils.tlsgenerator.exception.TlsGeneratorTechnicalException;
 import org.digidoc4j.utils.tlsgenerator.tls.NoOpTrustManager;
+import org.digidoc4j.utils.tlsgenerator.tls.TlsProtocol;
 import org.digidoc4j.utils.tlsgenerator.tls.TlsUtils;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -23,7 +24,6 @@ import java.net.URL;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -35,10 +35,10 @@ public final class LotlParser {
     private static final String TSL_POINTERS = "PointersToOtherTSL";
     private static final String TSL_POINTER = "OtherTSLPointer";
 
-    private final String protocol;
+    private final TlsProtocol protocol;
 
-    public LotlParser(final Optional<String> tlsProtocol) {
-        protocol = TlsUtils.getValidTlsProtocol(tlsProtocol);
+    public LotlParser(final TlsProtocol tlsProtocol) {
+        protocol = Objects.requireNonNull(tlsProtocol);
     }
 
     public List<TslPointer> parseLotl(final URL lotlUrl) {
@@ -76,7 +76,7 @@ public final class LotlParser {
             final HttpURLConnection httpUrlConnection = (HttpURLConnection) lotlUrl.openConnection();
             if (httpUrlConnection instanceof HttpsURLConnection) {
                 ((HttpsURLConnection) httpUrlConnection).setSSLSocketFactory(
-                        TlsUtils.createSocketFactory(Optional.of(protocol), new NoOpTrustManager())
+                        TlsUtils.createSocketFactory(protocol, new NoOpTrustManager())
                 );
             }
 
