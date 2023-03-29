@@ -39,7 +39,7 @@ public final class TlsTrustStoreGenerator {
                     new HttpUrlsInputSource(options.getOrDefault(CommandLineArgument.URL, Collections.emptyList())),
                     new LotlUrlsInputSource(options.getOrDefault(CommandLineArgument.LOTL, Collections.emptyList()),
                             getTlsProtocol(options), options.containsKey(CommandLineArgument.FOLLOW_REDIRECTS))
-            ).flatMap(UrlsInputSource::stream).distinct(), options);
+            ).flatMap(UrlsInputSource::stream).filter(UrlUtils.statefulDistinctFilter()), options);
 
             System.out.println();
             System.out.println("Saving truststore: " + options.get(CommandLineArgument.OUT).get(0));

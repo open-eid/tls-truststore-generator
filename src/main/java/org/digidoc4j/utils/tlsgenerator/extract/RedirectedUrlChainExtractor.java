@@ -40,7 +40,7 @@ public final class RedirectedUrlChainExtractor {
         final URL currentUrl = urls.get(urls.size() - 1);
         try {
             final Optional<URL> nextUrl = getNextUrl(currentUrl.openConnection());
-            if (!nextUrl.isPresent() || urls.contains(nextUrl.get())) {
+            if (!nextUrl.isPresent() || UrlUtils.contains(urls, nextUrl.get())) {
                 return;
             }
 

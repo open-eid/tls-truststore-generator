@@ -11,7 +11,7 @@ public abstract class AbstractUrlsInputSource implements UrlsInputSource {
     private final URL[] urls;
 
     protected AbstractUrlsInputSource(final Stream<URL> urls) {
-        this.urls = urls.distinct().toArray(URL[]::new);
+        this.urls = urls.filter(UrlUtils.statefulDistinctFilter()).toArray(URL[]::new);
     }
 
     @Override
