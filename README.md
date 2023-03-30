@@ -121,6 +121,16 @@ If not present, acts as if `--extract-from-chain all` was specified.
 
 ### External Communication
 
+#### Error Handling
+
+Skipping URLs that cause connection errors can be enabled using the `--continue-on-error` argument:
+```
+java -jar tls-truststore-generator-1.0.0.jar --continue-on-error
+```
+
+**--continue-on-error** is an optional argument, requiring no parameters.
+If not specified, the first encountered connection error will stop any further processing.
+
 #### HTTP Redirection
 
 Following HTTP 3XX redirects can be enabled using the `--follow-redirects` argument:

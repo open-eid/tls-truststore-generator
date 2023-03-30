@@ -1,5 +1,6 @@
 package org.digidoc4j.utils.tlsgenerator.extract;
 
+import org.digidoc4j.utils.tlsgenerator.exception.TlsGeneratorException;
 import org.digidoc4j.utils.tlsgenerator.exception.TlsGeneratorTechnicalException;
 import org.digidoc4j.utils.tlsgenerator.tls.NoOpTrustManager;
 import org.digidoc4j.utils.tlsgenerator.tls.TlsProtocol;
@@ -14,12 +15,10 @@ import java.net.ProtocolException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.net.URLConnection;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
+import java.util.function.Consumer;
 
 public final class RedirectedUrlChainExtractor {
 
@@ -27,65 +26,88 @@ public final class RedirectedUrlChainExtractor {
     private static final String REDIRECT_TARGET_HEADER = "Location";
 
     private final TlsProtocol protocol;
+    private final Consumer<TlsGeneratorException> handler;
 
-    public RedirectedUrlChainExtractor(final TlsProtocol tlsProtocol) {
+    public RedirectedUrlChainExtractor(final TlsProtocol tlsProtocol, final Consumer<TlsGeneratorException> errorHandler) {
         protocol = Objects.requireNonNull(tlsProtocol);
+        handler = Objects.requireNonNull(errorHandler);
     }
 
     public List<URL> extractRedirectionUrlChain(final URL url) {
-        final List<URL> accumulatedUrls = new ArrayList<>(Collections.singletonList(url));
-        followRedirectsRecursively(accumulatedUrls);
+        final List<URL> accumulatedUrls = new ArrayList<>();
+        try {
+            followRedirectsRecursively(url, accumulatedUrls);
+        } catch (TlsGeneratorTechnicalException exception) {
+            handler.accept(exception);
+        }
         return accumulatedUrls;
     }
 
-    private void followRedirectsRecursively(final List<URL> urls) {
-        final URL currentUrl = urls.get(urls.size() - 1);
-        try {
-            final Optional<URL> nextUrl = getNextUrl(currentUrl.openConnection());
-            if (!nextUrl.isPresent() || UrlUtils.contains(urls, nextUrl.get())) {
-                return;
-            }
-
-            urls.add(nextUrl.get());
-        } catch (IOException e) {
-            throw new TlsGeneratorTechnicalException("Failed to open connection: " + currentUrl, e);
+    private void followRedirectsRecursively(final URL currentUrl, final List<URL> urlAccumulator) {
+        final URL nextUrl = followRedirectAndGetNextUrl(currentUrl, urlAccumulator);
+        if (nextUrl == null || UrlUtils.contains(urlAccumulator, nextUrl)) {
+            return; // Break the recursion if there is no next URL or this URL has already been followed
         }
-
-        followRedirectsRecursively(urls);
+        followRedirectsRecursively(nextUrl, urlAccumulator);
     }
 
-    private Optional<URL> getNextUrl(final URLConnection urlConnection) {
-        final HttpURLConnection httpURLConnection = (HttpURLConnection) urlConnection;
-
+    private URL followRedirectAndGetNextUrl(final URL currentUrl, final List<URL> urlAccumulator) {
         try {
-            httpURLConnection.setRequestMethod(REQUEST_METHOD);
-            httpURLConnection.setInstanceFollowRedirects(false);
-            if (httpURLConnection instanceof HttpsURLConnection) {
-                configureForTls((HttpsURLConnection) httpURLConnection);
-            }
-            httpURLConnection.connect();
+            final HttpURLConnection httpURLConnection = (HttpURLConnection) currentUrl.openConnection();
 
-            final int responseCode = httpURLConnection.getResponseCode();
-            if (responseCode / 100 == 3) {
-                final URL connectedUrl = httpURLConnection.getURL();
-                final String redirectTargetHeaderValue = httpURLConnection.getHeaderField(REDIRECT_TARGET_HEADER);
-                return Optional.of(toUrl(connectedUrl, responseCode, redirectTargetHeaderValue));
+            try {
+                httpURLConnection.setRequestMethod(REQUEST_METHOD);
+                httpURLConnection.setInstanceFollowRedirects(false);
+                if (httpURLConnection instanceof HttpsURLConnection) {
+                    configureForTls((HttpsURLConnection) httpURLConnection);
+                }
+                httpURLConnection.connect();
+
+                // Only after the connection was opened successfully,
+                //  it is safe to add the URL for subsequent certificate fetching
+                urlAccumulator.add(currentUrl);
+
+                return getNextUrl(httpURLConnection);
+            } catch (ProtocolException e) {
+                throw new TlsGeneratorTechnicalException("Protocol error: " + e.getMessage(), e);
+            } finally {
+                httpURLConnection.disconnect();
             }
-        } catch (ProtocolException e) {
-            throw new TlsGeneratorTechnicalException("Request method " + REQUEST_METHOD + " not supported", e);
         } catch (IOException e) {
-            throw new TlsGeneratorTechnicalException("Failed to get response from " + urlConnection.getURL(), e);
-        } finally {
-            httpURLConnection.disconnect();
+            final String message = String.format("Failed to open connection to %s: %s", currentUrl, e.getMessage());
+            throw new TlsGeneratorTechnicalException(message, e);
         }
+    }
 
-        return Optional.empty();
+    private void configureForTls(final HttpsURLConnection httpsURLConnection) {
+        httpsURLConnection.setSSLSocketFactory(TlsUtils.createSocketFactory(protocol, new NoOpTrustManager()));
+    }
+
+    private static URL getNextUrl(final HttpURLConnection httpURLConnection) {
+        try {
+            final int responseCode = httpURLConnection.getResponseCode();
+
+            if (responseCode / 100 != 3) {
+                return null; // Not a HTTP 3XX response
+            }
+
+            final URL connectedUrl = httpURLConnection.getURL();
+            final String redirectTargetHeaderValue = httpURLConnection.getHeaderField(REDIRECT_TARGET_HEADER);
+
+            if (redirectTargetHeaderValue == null || redirectTargetHeaderValue.trim().isEmpty()) {
+                String message = String.format("No %s header provided for %d response", REDIRECT_TARGET_HEADER, responseCode);
+                throw new TlsGeneratorTechnicalException(message);
+            }
+
+            return toUrl(connectedUrl, responseCode, redirectTargetHeaderValue);
+        } catch (IOException e) {
+            final URL connectionUrl = httpURLConnection.getURL();
+            final String message = String.format("Failed to get response from %s: %s", connectionUrl, e.getMessage());
+            throw new TlsGeneratorTechnicalException(message, e);
+        }
     }
 
     private static URL toUrl(final URL currentUrl, final int responseCode, final String redirectTargetHeader) {
-        if (redirectTargetHeader == null || redirectTargetHeader.trim().isEmpty()) {
-            throw new TlsGeneratorTechnicalException(String.format("No %s header provided for %d response", REDIRECT_TARGET_HEADER, responseCode));
-        }
         try {
             URI newUri = new URI(redirectTargetHeader);
 
@@ -101,14 +123,11 @@ public final class RedirectedUrlChainExtractor {
             System.out.println(String.format("%s -(%d)-> %s", currentUrl, responseCode, newUrl));
             return newUrl;
         } catch (URISyntaxException e) {
-            throw new TlsGeneratorTechnicalException(String.format("Invalid %s header value: %s", REDIRECT_TARGET_HEADER, redirectTargetHeader), e);
+            String message = String.format("Invalid %s header value: %s", REDIRECT_TARGET_HEADER, redirectTargetHeader);
+            throw new TlsGeneratorTechnicalException(message, e);
         } catch (MalformedURLException e) {
             throw new TlsGeneratorTechnicalException("Failed to form URL: " + redirectTargetHeader, e);
         }
-    }
-
-    private void configureForTls(final HttpsURLConnection httpsURLConnection) {
-        httpsURLConnection.setSSLSocketFactory(TlsUtils.createSocketFactory(protocol, new NoOpTrustManager()));
     }
 
     private static boolean isProtocolSupported(final String protocol) {

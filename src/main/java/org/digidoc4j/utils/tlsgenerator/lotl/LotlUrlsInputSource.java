@@ -1,5 +1,6 @@
 package org.digidoc4j.utils.tlsgenerator.lotl;
 
+import org.digidoc4j.utils.tlsgenerator.exception.TlsGeneratorException;
 import org.digidoc4j.utils.tlsgenerator.exception.TlsGeneratorInputException;
 import org.digidoc4j.utils.tlsgenerator.extract.RedirectedUrlChainExtractor;
 import org.digidoc4j.utils.tlsgenerator.tls.TlsProtocol;
@@ -8,6 +9,7 @@ import org.digidoc4j.utils.tlsgenerator.url.AbstractUrlsInputSource;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
@@ -24,8 +26,10 @@ public final class LotlUrlsInputSource extends AbstractUrlsInputSource {
         final LotlParser lotlParser = new LotlParser(tlsProtocol);
         return lotlUrls
                 .map(getRedirectionHandler(tlsProtocol, followRedirects))
-                .flatMap(lotlUrl -> Stream.concat(Stream.of(lotlUrl),
-                        lotlParser.parseLotl(lotlUrl).stream().map(TslPointer::getUrl)));
+                .flatMap(lotlUrl -> Stream.concat(
+                        Stream.of(lotlUrl),
+                        lotlParser.parseLotl(lotlUrl).stream().map(TslPointer::getUrl)
+                ));
     }
 
     private static URL parseURL(final String urlString) {
@@ -39,7 +43,9 @@ public final class LotlUrlsInputSource extends AbstractUrlsInputSource {
 
     private static UnaryOperator<URL> getRedirectionHandler(final TlsProtocol tlsProtocol, final boolean followRedirects) {
         if (followRedirects) {
-            final RedirectedUrlChainExtractor extractor = new RedirectedUrlChainExtractor(tlsProtocol);
+            // Re-throw the exception if the entire redirection chain for LOTL fails to be resolved
+            final Consumer<TlsGeneratorException> errorHandler = exception -> { throw exception; };
+            final RedirectedUrlChainExtractor extractor = new RedirectedUrlChainExtractor(tlsProtocol, errorHandler);
             return url -> {
                 final List<URL> redirectionChain = extractor.extractRedirectionUrlChain(url);
                 return redirectionChain.isEmpty() ? url : redirectionChain.get(redirectionChain.size() - 1);

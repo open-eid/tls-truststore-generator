@@ -14,6 +14,7 @@ public enum CommandLineArgument {
     PASSWORD(1, "--password", "-p"),
     TLS_PROTOCOL(1, "--tls-protocol", "--tls"),
     EXTRACT_FROM_CHAIN(1, Integer.MAX_VALUE, "--extract-from-chain"),
+    CONTINUE_ON_ERROR("--continue-on-error"),
     FOLLOW_REDIRECTS("--follow-redirects"),
 
     HELP("--help", "-h");

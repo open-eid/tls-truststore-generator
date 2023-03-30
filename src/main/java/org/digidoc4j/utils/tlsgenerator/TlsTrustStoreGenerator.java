@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
@@ -47,9 +48,11 @@ public final class TlsTrustStoreGenerator {
             System.out.printf("Done%n").println();
         } catch (TlsGeneratorInputException exception) {
             outputErrorMessage(exception);
+            System.out.println();
             CommandLineInterface.printHelp();
         } catch (TlsGeneratorException exception) {
             outputErrorMessage(exception);
+            System.out.println();
         }
     }
 
@@ -60,7 +63,7 @@ public final class TlsTrustStoreGenerator {
         final List<List<X509Certificate>> certificateChains = urls
                 .flatMap(getUrlExtractor(options))
                 .filter(UrlUtils::isHttpsUrl)
-                .map(getCertificateChainFetcher(options))
+                .flatMap(getCertificateChainFetcher(options))
                 .distinct()
                 .collect(Collectors.toList());
 
@@ -74,31 +77,43 @@ public final class TlsTrustStoreGenerator {
 
     private static Function<URL, Stream<URL>> getUrlExtractor(final Map<CommandLineArgument, List<String>> options) {
         if (options.containsKey(CommandLineArgument.FOLLOW_REDIRECTS)) {
-            final RedirectedUrlChainExtractor redirectedUrlChainExtractor = new RedirectedUrlChainExtractor(getTlsProtocol(options));
+            final RedirectedUrlChainExtractor redirectedUrlChainExtractor = new RedirectedUrlChainExtractor(getTlsProtocol(options), getErrorHandler(options));
             return url -> redirectedUrlChainExtractor.extractRedirectionUrlChain(url).stream();
         } else {
-            return url -> Stream.of(url);
+            return Stream::of;
         }
     }
 
-    private static Function<URL, List<X509Certificate>> getCertificateChainFetcher(final Map<CommandLineArgument, List<String>> options) {
+    private static Function<URL, Stream<List<X509Certificate>>> getCertificateChainFetcher(final Map<CommandLineArgument, List<String>> options) {
         final CertificateChainFetcher certificateChainFetcher = new CertificateChainFetcher(getTlsProtocol(options));
+        final Consumer<TlsGeneratorException> errorHandler = getErrorHandler(options);
         return url -> {
-            final List<X509Certificate> chain = certificateChainFetcher.fetchCertificateChainFrom(url);
-            System.out.println(url + ": " + X509Utils.getCertificatesSimpleNames(chain));
-            return chain;
+            try {
+                final List<X509Certificate> chain = certificateChainFetcher.fetchCertificateChainFrom(url);
+                System.out.println(url + ": " + X509Utils.getCertificatesSimpleNames(chain));
+                return Stream.of(chain);
+            } catch (TlsGeneratorException exception) {
+                errorHandler.accept(exception);
+                return Stream.empty();
+            }
         };
     }
 
     private static Function<List<X509Certificate>, Stream<X509Certificate>> getChainExtractor(final Map<CommandLineArgument, List<String>> options) {
-        final UnaryOperator<List<X509Certificate>> extractor = options.containsKey(CommandLineArgument.EXTRACT_FROM_CHAIN) ?
-                CertificateChainExtractor.createCertificateChainExtractor(options.get(CommandLineArgument.EXTRACT_FROM_CHAIN)) :
-                UnaryOperator.identity();
+        final UnaryOperator<List<X509Certificate>> extractor = options.containsKey(CommandLineArgument.EXTRACT_FROM_CHAIN)
+                ? CertificateChainExtractor.createCertificateChainExtractor(options.get(CommandLineArgument.EXTRACT_FROM_CHAIN))
+                : UnaryOperator.identity();
         return chain -> {
             final List<X509Certificate> extractedList = extractor.apply(chain);
             System.out.println(X509Utils.getCertificatesSimpleNames(chain) + " -> " + X509Utils.getCertificatesSimpleNames(extractedList));
             return extractedList.stream();
         };
+    }
+
+    private static Consumer<TlsGeneratorException> getErrorHandler(final Map<CommandLineArgument, List<String>> options) {
+        return options.containsKey(CommandLineArgument.CONTINUE_ON_ERROR)
+                ? TlsTrustStoreGenerator::outputErrorMessage
+                : exception -> { throw exception; };
     }
 
     private static void verifyArgumentsParameters(final Map<CommandLineArgument, List<String>> options) {
@@ -125,8 +140,8 @@ public final class TlsTrustStoreGenerator {
     }
 
     private static void outputErrorMessage(final TlsGeneratorException exception) {
+        System.out.flush(); // Flush stdout before writing anything to stderr
         System.err.println(exception.getMessage());
-        System.err.println();
         System.err.flush();
     }
 
