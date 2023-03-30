@@ -18,7 +18,7 @@ The built and packaged application will be located in `tls-truststore-generator/
 ## How to Use
 
 TLS Truststore Generator is run using the following command:
-```
+```Shell
 java -jar tls-truststore-generator-1.0.0.jar ARGUMENTS...
 ```
 where `ARGUMENTS...` is any valid combination of supported command line arguments and their parameters.
@@ -26,10 +26,10 @@ where `ARGUMENTS...` is any valid combination of supported command line argument
 ### Truststore Output
 
 The generated truststore destination path can be specified using the `--out` argument or its short alias `-o` followed by the desired path:
-```
+```Shell
 java -jar tls-truststore-generator-1.0.0.jar --out /path/to/truststore.extension
 ```
-```
+```Shell
 java -jar tls-truststore-generator-1.0.0.jar -o /path/to/truststore.extension
 ```
 
@@ -38,10 +38,10 @@ java -jar tls-truststore-generator-1.0.0.jar -o /path/to/truststore.extension
 #### Truststore Password
 
 The password of the generated truststore can be specified using the `--password` argument or its short alias `-p` followed by the desired password:
-```
+```Shell
 java -jar tls-truststore-generator-1.0.0.jar --password changeit
 ```
-```
+```Shell
 java -jar tls-truststore-generator-1.0.0.jar -p changeit
 ```
 
@@ -51,10 +51,10 @@ If not present, queries the password interactively in a secure manner (requires 
 #### Truststore Type
 
 The type of the generated truststore can be specified using the `--type` argument or its short alias `-t` followed by the desired type:
-```
+```Shell
 java -jar tls-truststore-generator-1.0.0.jar --type PKCS12
 ```
-```
+```Shell
 java -jar tls-truststore-generator-1.0.0.jar -t PKCS12
 ```
 
@@ -71,7 +71,7 @@ In case of the latter, the LOTL is fetched, parsed and all the URLs of individua
 #### Generic URLs
 
 Generic input URLs can be specified using the `--url` argument followed by a space-separated list of URL strings:
-```
+```Shell
 java -jar tls-truststore-generator-1.0.0.jar --url https://host[:port][/path]
 ```
 
@@ -81,10 +81,10 @@ java -jar tls-truststore-generator-1.0.0.jar --url https://host[:port][/path]
 
 Currently, only **EU Trusted List of Trust Service Providers** version **5** is guaranteed to be compatible with TLS Truststore Generator.<br>
 LOTL input URLs can be specified using the `--lotl-url` argument or its shorter alias `--lotl` followed by a space-separated list of URL strings:
-```
+```Shell
 java -jar tls-truststore-generator-1.0.0.jar --lotl-url https://host[:port]/path/to/lotl
 ```
-```
+```Shell
 java -jar tls-truststore-generator-1.0.0.jar --lotl https://host[:port]/path/to/lotl
 ```
 
@@ -107,12 +107,12 @@ Specific certificates to extract from the chains can be specified using the `--e
 \* interactive mode requires interactive console support on the system the utility is run
 
 Example parameter usage:
-```
+```Shell
 java -jar tls-truststore-generator-1.0.0.jar --extract-from-chain ca-or-cert
 ```
 
 Example indices usage:
-```
+```Shell
 java -jar tls-truststore-generator-1.0.0.jar --extract-from-chain 0 1 2
 ```
 
@@ -124,7 +124,7 @@ If not present, acts as if `--extract-from-chain all` was specified.
 #### Error Handling
 
 Skipping URLs that cause connection errors can be enabled using the `--continue-on-error` argument:
-```
+```Shell
 java -jar tls-truststore-generator-1.0.0.jar --continue-on-error
 ```
 
@@ -134,7 +134,7 @@ If not specified, the first encountered connection error will stop any further p
 #### HTTP Redirection
 
 Following HTTP 3XX redirects can be enabled using the `--follow-redirects` argument:
-```
+```Shell
 java -jar tls-truststore-generator-1.0.0.jar --follow-redirects
 ```
 
@@ -144,7 +144,7 @@ If not specified, will not follow any redirects.
 #### TLS Protocol
 
 Specific TLS protocol for secure connections can be specified using the `--tls-protocol` argument followed by the TLS protocol identifier:
-```
+```Shell
 java -jar tls-truststore-generator-1.0.0.jar --tls-protocol TLSv1.3
 ```
 
